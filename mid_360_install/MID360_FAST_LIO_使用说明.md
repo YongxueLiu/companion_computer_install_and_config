@@ -209,7 +209,7 @@ Wants=mid360-driver.service
 [Service]
 Type=simple
 User=lyx
-ExecStart=/bin/bash -c 'source /opt/ros/humble/setup.sh && source /home/lyx/ws_livox/install/setup.sh && ros2 launch fast_lio mapping.launch.py rviz:=false'
+ExecStart=/bin/bash -c 'source /opt/ros/humble/setup.sh && source /home/lyx/ws_livox/install/setup.sh && sleep 15 && ros2 launch fast_lio mapping.launch.py rviz:=false'
 Restart=always
 
 [Install]
