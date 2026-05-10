@@ -1,0 +1,31 @@
+/**:
+  ros__parameters:
+    # ------------------------------------------------------------------
+    # Body coordinate frame of the Livox IMU
+    # 'FLU' -> Forward-Left-Up  (apply R_FRD->FLU = R_x(180) correction)
+    # 'FRD' -> Forward-Right-Down (already matches PX4 body, no correction)
+    # ------------------------------------------------------------------
+    body_frame: 'FLU'
+
+    # ------------------------------------------------------------------
+    # Yaw alignment mode
+    # 'none'    -> No yaw correction. Output uses virtual NED (ENU treated
+    #              as local NED). Suitable for indoor flights without GPS.
+    # 'px4_mag' -> Subscribe to /fmu/out/vehicle_attitude, compute
+    #              delta_yaw = yaw_mag - yaw_virtual, and align SLAM yaw
+    #              to true North. Requires PX4 magnetometer to be active.
+    # 'manual'  -> Use manual_yaw_offset_rad as a fixed delta_yaw.
+    # ------------------------------------------------------------------
+    yaw_alignment_mode: 'none'
+
+    # Manual yaw offset (radians). Only used when yaw_alignment_mode='manual'.
+    # Positive = rotate SLAM yaw counter-clockwise to align with true North.
+    manual_yaw_offset_rad: 0.0
+
+    # ------------------------------------------------------------------
+    # Safety / robustness
+    # ------------------------------------------------------------------
+    position_jump_threshold: 0.5
+    default_position_variance: [0.01, 0.01, 0.01]
+    default_orientation_variance: [0.01, 0.01, 0.01]
+    publish_rate: 100.0
