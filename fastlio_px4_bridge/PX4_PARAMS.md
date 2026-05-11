@@ -10,6 +10,7 @@
 |---|---|---|
 | `EKF2_EV_CTRL` | `15` | 启用 EV 控制位掩码：`1(位置) + 2(速度) + 4(高度) + 8(偏航)` = 15 |
 | `EKF2_HGT_REF` | `3` | 高度参考源设为 **Vision**（外部视觉） |
+| `EKF2_MAG_TYPE` | `5` | 使用 **Vision/EV 偏航**，禁用磁罗盘融合（避免室内磁干扰） |
 | `EKF2_EV_DELAY` | `20` ~ `50` | 外部视觉延迟（ms）。FAST-LIO 通常 <50ms，设 20~30 即可。 |
 | `EKF2_EV_NOISE_MD` | `0` | 使用桥接节点提供的 covariance（手动噪声模型） |
 | `EKF2_EV_GATE` | `5.0` | EV 卡方检验门限。可适当放宽到 5.0~10.0。 |
@@ -29,7 +30,6 @@
 | 参数 | 值 | 说明 |
 |---|---|---|
 | `EKF2_GPS_CTRL` | `0` | 完全禁用 GPS 融合 |
-| `EKF2_MAG_TYPE` | `5` | 使用 Vision/EV 偏航（不用磁罗盘） |
 
 ### 室外（GPS + 视觉融合）
 | 参数 | 值 | 说明 |
@@ -101,6 +101,7 @@
 
 - [ ] `EKF2_EV_CTRL` = `15`
 - [ ] `EKF2_HGT_REF` = `3` (Vision)
+- [ ] `EKF2_MAG_TYPE` = `5`
 - [ ] `UXRCE_DDS_CFG` = `TELEM1` 或 `TELEM2`（非 Disabled）
 - [ ] 对应串口波特率 = `921600`
 - [ ] 桥接节点已启动，`/fmu/in/vehicle_visual_odometry` 有数据
