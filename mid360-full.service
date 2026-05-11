@@ -1,0 +1,22 @@
+[Unit]
+Description=MID360 Full Stack: Network + Agent + Driver + FAST-LIO + PX4 Bridge
+After=network.target
+
+[Service]
+Type=simple
+User=lingzhilab
+
+# Network setup (run as root/privileged before main service)
++ExecStartPre=-/sbin/ip addr flush dev enP8p1s0
++ExecStartPre=/bin/sleep 0.5
++ExecStartPre=/sbin/ip link set enP8p1s0 up
++ExecStartPre=/sbin/ip addr add 192.168.1.50/24 dev enP8p1s0
+
+# Main launch script
+ExecStart=/home/lingzhilab/ws_livox/start_all.sh
+ExecStop=/home/lingzhilab/ws_livox/start_all.sh stop
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
