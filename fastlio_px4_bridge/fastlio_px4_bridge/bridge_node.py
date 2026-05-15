@@ -100,7 +100,6 @@ class FastLioPx4Bridge(Node):
         # ------------------------------------------------------------------
         self.last_pos = None
         self.reset_counter = 0
-        self.timesync_offset = 0
         self.last_publish_time = self.get_clock().now()
 
         # Yaw alignment state
@@ -117,9 +116,11 @@ class FastLioPx4Bridge(Node):
         # ------------------------------------------------------------------
         self.sub_odom = self.create_subscription(
             Odometry, '/Odometry', self.odom_callback, 10)
-        self.sub_timesync = self.create_subscription(
-            TimesyncStatus, '/fmu/out/timesync_status',
-            self.timesync_callback, qos_best_effort)
+        # NOTE: Do NOT apply timesync_offset here. PX4 uXRCE-DDS client
+        # automatically converts timestamps during deserialization:
+        #   topic.timestamp = msg.timestamp - session->time_offset
+        # Manual offset would cause double-conversion.
+        # self.sub_timesync = self.create_subscription(...)
 
         yaw_mode = self.get_parameter('yaw_alignment_mode').value
         if yaw_mode == 'px4_mag':
@@ -138,9 +139,6 @@ class FastLioPx4Bridge(Node):
         self.get_logger().info(
             f'Bridge started | body_frame={body} | yaw_alignment={yaw_mode}')
 
-    def timesync_callback(self, msg: TimesyncStatus):
-        self.timesync_offset = int(msg.estimated_offset)
-
     def px4_attitude_callback(self, msg: VehicleAttitude):
         """Receive PX4 true attitude (FRD -> true NED) and extract yaw."""
         q_px4 = np.array([msg.q[0], msg.q[1], msg.q[2], msg.q[3]], dtype=np.float64)
@@ -157,9 +155,9 @@ class FastLioPx4Bridge(Node):
 
         vo = VehicleOdometry()
 
-        # ---- Timestamp (us) ------------------------------------------------
-        ros_time_us = int(now.nanoseconds // 1000)
-        vo.timestamp = ros_time_us + self.timesync_offset
+        # ---- Timestamp (us): use FAST-LIO original sample time -------------
+        # PX4 uXRCE-DDS client auto-converts Unix -> boot-relative during deserialization
+        vo.timestamp = int(msg.header.stamp.sec * 1_000_000 + msg.header.stamp.nanosec // 1000)
         vo.timestamp_sample = vo.timestamp
 
         # ---- Pose frame -----------------------------------------------------
