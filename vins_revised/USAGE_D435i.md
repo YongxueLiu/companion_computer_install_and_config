@@ -191,6 +191,8 @@ D435i 的 **IMU 坐标系** 和 **相机坐标系** 方向不同：
 
 ### 2. 启动 RealSense D435i（640×480 + IMU）
 
+#### 2.1 标准启动
+
 ```bash
 source /opt/ros/rolling/setup.bash
 source ~/ros2_ws/install/setup.bash
@@ -213,6 +215,32 @@ ros2 launch realsense2_camera rs_launch.py \
 - `unite_imu_method:=2`：将 gyro 和 accel 按线性插值合并为 `/camera/camera/imu`
 - `enable_sync:=true`：开启硬件帧同步
 - ⚠️ **USB 3.2 必需**：确认日志中有 `Device USB type: 3.2`
+
+#### 2.2 带硬复位启动（解决 IMU/HID 残留错误）
+
+如果上次运行后 RealSense 未正常关闭，或日志中频繁出现以下错误，请在启动时加上 `initial_reset:=true`，强制设备硬复位：
+
+```bash
+ros2 launch realsense2_camera rs_launch.py \
+  enable_sync:=true \
+  enable_infra1:=true \
+  enable_infra2:=true \
+  enable_gyro:=true \
+  enable_accel:=true \
+  unite_imu_method:=2 \
+  depth_module.infra_profile:=640x480x30 \
+  enable_depth:=false \
+  enable_color:=false \
+  initial_reset:=true
+```
+
+**适用场景**：
+- `Failed to enable_sensor ... HID-SENSOR-2000e1 ... No such file or directory`
+- `HID set_power 0/1 failed` 反复出现
+- `xioctl(VIDIOC_QBUF) failed ... No such device` 导致流中断
+- 设备被重新发现后（`Device with serial number ... was found`）但无法正常出流
+
+> `initial_reset:=true` 会在启动前向设备发送硬件复位指令，清除上次会话残留的 HID/UVC 状态。通常可解决 90% 的 IMU 初始化失败问题。复位后设备需要约 1~2 秒重新枚举，属于正常现象。
 
 ### 3. 启动 VINS（VIO 模式）
 
@@ -480,7 +508,100 @@ python3 plot_odom_compare.py ~/odom_compare_result.csv
 
 ---
 
-## 七、常见问题
+## 七、坐标系与输出约定（重要）
+
+VINS-Fusion 的 World 坐标系定义取决于运行模式（VO 还是 VIO），**两者完全不同**。理解这一点对解读 `/vins_estimator/odometry` 输出至关重要。
+
+---
+
+### 7.1 RealSense 相机坐标系
+
+D435i 的红外相机（infra1/infra2）使用 **OpenCV 惯例**：
+
+| 轴 | 方向 | 说明 |
+|---|---|---|
+| **X** | right（右）| 沿图像水平向右 |
+| **Y** | down（下）| 沿图像垂直向下 |
+| **Z** | forward（前）| 镜头光轴朝前 |
+
+> **重要**：librealsense SDK 内部已将 IMU 数据自动转换到相机坐标系（见官方文档），因此 ROS 发布的 `/camera/camera/imu` 和相机共享同一坐标系。
+
+---
+
+### 7.2 VIO 模式（imu: 1）—— World 坐标系
+
+VIO 初始化时调用 `initialStructure()`，通过 `g2R(g)` 将重力方向对齐到 World Z 轴：
+
+| 轴 | 方向 | 与相机坐标系的关系 |
+|---|---|---|
+| **X** | right（右）| ≈ Camera X |
+| **Y** | forward（前）| ≈ Camera Z |
+| **Z** | up（上）| ≈ -Camera Y（重力反方向）|
+
+**验证方法**：手持相机在空间中移动，观察 `/vins_estimator/odometry` 的 position：
+- **往右移动** → `x` 增大
+- **往前移动** → `y` 增大
+- **向上移动** → `z` 增大
+
+**特点**：
+- World Z 轴固定向上（重力对齐），不随第一帧相机朝向改变
+- X/Y 在水平面内，具体方向取决于初始化时第一帧的姿态
+- 适合需要绝对高度（Z-up）的应用场景
+
+---
+
+### 7.3 VO 模式（imu: 0）—— World 坐标系
+
+纯视觉 VO 初始化时调用 `clearState()`，`Rs[0] = I`，World 系直接等于**第一帧 Camera 坐标系**：
+
+| 轴 | 方向 | 与相机坐标系的关系 |
+|---|---|---|
+| **X** | right（右）| = Camera X |
+| **Y** | down（下）| = Camera Y |
+| **Z** | forward（前）| = Camera Z |
+
+**验证方法**：
+- **往右移动** → `x` 增大
+- **往下移动** → `y` 增大（注意：不是向上！）
+- **往前移动** → `z` 增大
+
+**特点**：
+- World Z 轴 = 第一帧相机光轴方向，不是真正的"上"
+- 没有绝对尺度，存在尺度漂移
+- 相机倾斜放置时，World 系也随之倾斜
+
+---
+
+### 7.4 VO 与 VIO 坐标系对比
+
+| 特征 | VIO（imu: 1） | VO（imu: 0） |
+|---|---|---|
+| World Z 轴 | **up（上）** 重力对齐 | **forward（前）** 第一帧相机朝向 |
+| World Y 轴 | **forward（前）** | **down（下）** |
+| 绝对高度 | ✅ Z 表示真实高度 | ❌ Z 只是深度，不代表高度 |
+| 适用场景 | 无人机、机器人导航 | 纯视觉 SLAM、无 IMU 设备 |
+
+> ⚠️ **常见误区**：在 RViz 中查看 VO 轨迹时，如果相机朝下安装，轨迹会在 RViz 的 XY 平面"平铺"，看起来像 2D 地图，但实际上 Z 轴是相机朝前方向，不是高度。
+
+---
+
+### 7.5 坐标系变换源码对照
+
+| 模式 | 初始化函数 | 关键代码 | World 定义 |
+|---|---|---|---|
+| **VO** | `clearState()` | `Rs[0] = I` | 第一帧 Camera 系 |
+| **VIO** | `initialStructure()` | `R0 = g2R(g)` | Z-up，重力对齐 |
+
+其中 `g2R(g)` 的实现：
+```cpp
+// g ≈ [0, -9.8, 0] 在相机坐标系中（Y 向下）
+// FromTwoVectors([0,-1,0], [0,0,1]) 把 Camera Y（向下）转到 World Z（向上）
+R0 = Quaterniond::FromTwoVectors(ng1, ng2).toRotationMatrix();
+```
+
+---
+
+## 八、常见问题
 
 ### 1. 提示 `waiting for image and imu...` 后没反应
 - 检查 RealSense 是否已发布图像：
@@ -504,6 +625,27 @@ python3 plot_odom_compare.py ~/odom_compare_result.csv
 - **必须**加 `enable_sync:=true` 开启硬件帧同步
 - USB 线材质量差也会导致时间戳抖动和数据丢帧，建议使用原装线或认证 USB 3.0 线
 - 如果仍频繁 `throw img1`，检查 `ros2 topic hz /camera/camera/infra1/image_rect_raw /camera/camera/infra2/image_rect_raw` 两路帧率是否稳定
+
+### 5. 频繁 `xioctl(UVCIOC_CTRL_QUERY) failed: Protocol error`
+此错误通常来自 `global_timestamp_reader`，表示 librealsense SDK 与相机固件之间的 UVC 扩展单元协议不兼容。如果错误频繁出现且影响稳定性，建议升级相机固件。
+
+#### 使用 `realsense-viewer` 升级固件
+
+```bash
+# 1. 启动 RealSense 官方查看器
+realsense-viewer
+```
+
+在 GUI 中操作：
+1. 点击左侧 **"More"** → **"Firmware Update"**
+2. 选择 **"Update to recommended firmware"**（自动下载最新推荐版本）
+3. 或选择 **"Update from file"**（手动选择 `.bin` 固件包）
+4. 等待进度条完成，期间**不要拔掉 USB**
+5. 升级完成后设备会自动重启
+
+> ⚠️ **注意**：固件升级会擦除设备的出厂校准数据，升级后建议重新运行相机内参标定，或在 `realsense-viewer` 中检查 **IMU Calibration** 是否仍然有效。
+
+升级完成后重新启动 ROS 节点，观察 `Protocol error` 是否消失。
 
 ---
 
