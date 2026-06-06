@@ -1,0 +1,54 @@
+lyx@lyx-ROG-Strix-G16-G614JVR-G614JVR:~$ source /opt/ros/rolling/setup.bash
+source ~/ros2_ws/install/setup.bash
+
+ros2 launch realsense2_camera rs_launch.py \
+  enable_sync:=true \
+  enable_infra1:=true \
+  enable_infra2:=true \
+  enable_gyro:=true \
+  enable_accel:=true \
+  unite_imu_method:=2 \
+  depth_module.infra_profile:=640x480x30 \
+  enable_depth:=false \
+  enable_color:=false
+Warning: ROS Rolling has migrated to Ubuntu 26.04. Ubuntu 24.04 will no longer receive updated ROS Rolling system packages.
+Warning: ROS Rolling has migrated to Ubuntu 26.04. Ubuntu 24.04 will no longer receive updated ROS Rolling system packages.
+not found: "/home/lyx/ros2_ws/install/orbbec_camera/share/orbbec_camera/local_setup.bash"
+[INFO] [launch]: All log files can be found below /home/lyx/.ros/log/2026-06-06-15-23-20-334903-lyx-ROG-Strix-G16-G614JVR-G614JVR-26303
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [launch.user]: 🚀 Launching as Normal ROS Node
+[INFO] [realsense2_camera_node-1]: process started with pid [26307]
+[realsense2_camera_node-1] [INFO] [1780730600.720040871] [camera.camera]: RealSense ROS v4.57.7
+[realsense2_camera_node-1] [INFO] [1780730600.720138672] [camera.camera]: Built with LibRealSense v2.58.1
+[realsense2_camera_node-1] [INFO] [1780730600.720149754] [camera.camera]: Running with LibRealSense v2.58.1
+[realsense2_camera_node-1] [INFO] [1780730600.843050689] [camera.camera]: Device with serial number 243622072006 was found.
+[realsense2_camera_node-1] 
+[realsense2_camera_node-1] [INFO] [1780730600.843099192] [camera.camera]: Device with physical ID /sys/devices/pci0000:00/0000:00:14.0/usb2/2-3/2-3:1.0/video4linux/video2 was found.
+[realsense2_camera_node-1] [INFO] [1780730600.843104229] [camera.camera]: Device with name Intel RealSense D435I was found.
+[realsense2_camera_node-1] [INFO] [1780730600.843201574] [camera.camera]: Device with port number 2-3 was found.
+[realsense2_camera_node-1] [INFO] [1780730600.843206054] [camera.camera]: Device USB type: 3.2
+[realsense2_camera_node-1] [INFO] [1780730600.843599044] [camera.camera]: getParameters...
+[realsense2_camera_node-1] [WARN] [1780730600.843868681] [camera.camera]: For the 'unite_imu_method' param update to take effect, re-enable either gyro or accel stream.
+[realsense2_camera_node-1] [INFO] [1780730600.843881395] [camera.camera]: JSON file is not provided
+[realsense2_camera_node-1] [INFO] [1780730600.843884599] [camera.camera]: Device Name: Intel RealSense D435I
+[realsense2_camera_node-1] [INFO] [1780730600.843887409] [camera.camera]: Device Serial No: 243622072006
+[realsense2_camera_node-1] [INFO] [1780730600.843889849] [camera.camera]: Device physical port: /sys/devices/pci0000:00/0000:00:14.0/usb2/2-3/2-3:1.0/video4linux/video2
+[realsense2_camera_node-1] [INFO] [1780730600.843893171] [camera.camera]: Device FW version: 5.17.0.10
+[realsense2_camera_node-1] [INFO] [1780730600.843895647] [camera.camera]: Device Product ID: 0x0B3A
+[realsense2_camera_node-1] [INFO] [1780730600.843897824] [camera.camera]: Sync Mode: On
+[realsense2_camera_node-1] [INFO] [1780730600.932056235] [camera.camera]: Set ROS param depth_module.depth_profile to default: 848x480x30
+[realsense2_camera_node-1] [WARN] [1780730600.932300088] [camera.camera]: re-enable the stream for the change to take effect.
+[realsense2_camera_node-1] [INFO] [1780730600.934799334] [camera.camera]: Set ROS param rgb_camera.color_profile to default: 1280x720x30
+[realsense2_camera_node-1] [INFO] [1780730600.935127734] [camera.camera]: Set ROS param gyro_fps to default: 200
+[realsense2_camera_node-1] [INFO] [1780730600.935150408] [camera.camera]: Set ROS param accel_fps to default: 100
+[realsense2_camera_node-1] [INFO] [1780730600.937472625] [camera.camera]: Stopping Sensor: Depth Module
+[realsense2_camera_node-1] [INFO] [1780730600.937604461] [camera.camera]: Stopping Sensor: Motion Module
+[realsense2_camera_node-1] [INFO] [1780730600.968932649] [camera.camera]: Starting Sensor: Depth Module
+[realsense2_camera_node-1] [INFO] [1780730600.971014254] [camera.camera]: Open profile: stream_type: Infra(1), Format: Y8, Width: 640, Height: 480, FPS: 30
+[realsense2_camera_node-1] [INFO] [1780730600.971030670] [camera.camera]: Open profile: stream_type: Infra(2), Format: Y8, Width: 640, Height: 480, FPS: 30
+[realsense2_camera_node-1]  06/06 15:23:20,992 WARNING [125457538217664] (ds-calib-parsers.cpp:36) IMU Calibration is not available, default intrinsic and extrinsic will be used.
+[realsense2_camera_node-1] [INFO] [1780730600.994499843] [camera.camera]: Starting Sensor: Motion Module
+[realsense2_camera_node-1] [INFO] [1780730600.995924404] [camera.camera]: Open profile: stream_type: Accel(0)Format: MOTION_XYZ32F, FPS: 100
+[realsense2_camera_node-1] [INFO] [1780730600.995942867] [camera.camera]: Open profile: stream_type: Gyro(0)Format: MOTION_XYZ32F, FPS: 200
+[realsense2_camera_node-1] [INFO] [1780730601.005463441] [camera.camera]: RealSense Node Is Up!
+
