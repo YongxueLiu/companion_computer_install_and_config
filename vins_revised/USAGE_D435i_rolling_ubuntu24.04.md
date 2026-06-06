@@ -175,19 +175,52 @@ $ ros2 topic echo /camera/camera/extrinsics/depth_to_accel
   rotation: I, translation: [-0.00552, 0.00510, 0.01174]
 ```
 
-#### 为什么 `body_T_cam0` 不是单位矩阵？
+#### `body_T_cam0` / `body_T_cam1` 从何而来？
 
-D435i 的 **IMU 坐标系** 和 **相机坐标系** 方向不同：
+D435i 的 `body_T_cam0` 和 `body_T_cam1` **不能照搬 Euroc 默认值**，必须从 RealSense 出厂标定数据推导。
 
-| 坐标轴 | 红外相机 (infra) | IMU (BMI085) |
-|--------|-----------------|--------------|
+**快速获取（启动 RealSense 后执行）：**
+
+```bash
+# IMU → 左目外参
+ros2 topic echo /camera/camera/extrinsics/depth_to_accel --once
+
+# 左目 → 右目基线
+ros2 topic echo /camera/camera/extrinsics/depth_to_infra2 --once
+```
+
+**出厂标定输出示例：**
+
+```yaml
+# depth_to_accel
+translation: [ -0.00552, 0.00510, 0.01174 ]   # ← cam0 原点在 IMU 系中的坐标
+rotation:    [ 1, 0, 0, 0, 1, 0, 0, 0, 1 ]   # ← SDK 内部已对齐
+
+# depth_to_infra2
+translation: [ -0.05015, 0, 0 ]                # ← cam0 原点在 cam1 系中的坐标
+```
+
+**推导结果（已写入配置文件）：**
+
+```yaml
+body_T_cam0.t = [ -0.00552, 0.00510, 0.01174 ]   # 直接取自 depth_to_accel
+body_T_cam1.t = body_T_cam0.t - depth_to_infra2.t
+               = [ -0.00552, 0.00510, 0.01174 ] - [ -0.05015, 0, 0 ]
+               = [  0.04463, 0.00510, 0.01174 ]
+```
+
+> 详细推导过程、librealsense extrinsics 约定、常见误区见：
+> `tutorial/realsense_extrinsic_calibration_guide.md`
+
+**坐标系对照：**
+
+| 轴 | 红外相机 (infra) | IMU (BMI085) |
+|---|---|---|
 | X | **右** (right) | **前** (forward) |
 | Y | **下** (down) | **左** (left) |
 | Z | **前** (forward) | **上** (up) |
 
-> **为什么 `body_T_cam0` 的旋转是单位矩阵？** 理论上 IMU 和相机坐标轴方向不同，需要旋转矩阵。但 **librealsense SDK 内部已自动将 IMU 数据转换到相机坐标系**（见官方文档），因此 ROS 发布的 `/camera/camera/imu` 和相机共享同一坐标系。配置文件中 `body_T_cam0` 和 `body_T_cam1` 的旋转部分使用单位矩阵 `I`，平移部分包含了 IMU 到左右目的实际偏移。`estimate_extrinsic: 1` 会在 VIO 初始化时在线精修这些外参。
-
-> ⚠️ 如果把 `body_T_cam0` 改成非单位矩阵（如 Euroc 默认的 90° 旋转），IMU 数据会被错误地二次投影，导致 VIO 初始化失败或发散。
+> **为什么旋转是单位矩阵 I？** 理论上 IMU 和相机坐标轴方向不同，但 **librealsense SDK 内部已自动将 IMU 数据转换到相机坐标系**，ROS 发布的 `/camera/camera/imu` 已使用 camera frame。`body_T_cam0` 的旋转部分不需要额外变换。如果把 Euroc 的 ~90° 旋转搬过来，IMU 数据会被**二次投影**，VIO 必然发散。
 
 ### 2. 启动 RealSense D435i（640×480 + IMU）
 
@@ -397,6 +430,20 @@ ros2 topic echo /loop_fusion/odometry_rect --once
 - 确保光照稳定，红外图不能太暗
 - 回到同一位置时，视角不宜差异过大（>45° 可能匹配失败）
 
+**Q4：第二次跑的起飞点和第一次不一样，回环后位置会乱吗？**
+
+**不会乱。** 这是 `load_previous_pose_graph: 1` 的正确行为：
+
+- 第二次的 VIO 初始化会建立一个**新的局部坐标系**（原点 = 第二次起飞点 B）
+- 当在 C 点触发回环时，系统计算一个**刚性变换**（`shift_r`, `shift_t`）
+- 整个第二次的轨迹被**平移+旋转**到第一次的全局坐标系中
+- 第二次的 B 点在旧坐标系中有确定位置，C 点被修正到 D 点附近
+- **从 C 之后，所有导航输出都基于旧全局坐标系**
+
+简言之：回环对齐是**全局坐标系刚性拼接**，不是"只修正 C 点"。只要你的应用需要全局一致地图（如无人机多次巡逻），这就是想要的效果。
+
+> 如果你需要"每次起飞都是新原点"的局部定位，应设置 `load_previous_pose_graph: 0`。
+
 ---
 
 ## 五、可视化与对比工具
@@ -454,12 +501,46 @@ python3 odom_compare.py --save ~/odom_compare_result.csv
 
 脚本路径：`~/VINS-Fusion-ROS2/scripts/realtime_odom_plot.py`
 
-功能：弹出实时窗口，动态绘制四幅图，坐标轴根据数据范围自动缩放。
+功能：弹出实时窗口，动态绘制姿态角和轨迹，坐标轴根据数据范围自动缩放。
+
+**对比模式（默认，需同时运行 Loop Fusion）：**
 
 ```bash
 cd ~/VINS-Fusion-ROS2/scripts
 python3 realtime_odom_plot.py
 ```
+
+| 子图 | 内容 | 坐标轴缩放 |
+|---|---|---|
+| X/Y/Z Position vs Time | VINS raw vs Loop corrected | 自动 |
+| Position Drift | 位置差异 | 自动 |
+| Angular Drift (Quaternion) | 四元数角度差异 | 自动 |
+| Roll / Pitch / Yaw | VINS vs Loop 姿态角（PX4 FRD） | 自动 |
+
+**单 VINS 模式（不运行 Loop Fusion 时用）：**
+
+```bash
+cd ~/VINS-Fusion-ROS2/scripts
+python3 realtime_odom_plot.py --no-loop
+```
+
+布局（3×2，全部显示 VINS raw）：
+
+| 位置 | 内容 |
+|---|---|
+| [0,0] | X Position vs Time |
+| [0,1] | Y Position vs Time |
+| [1,0] | Z Position vs Time |
+| [1,1] | Roll vs Time |
+| [2,0] | Pitch vs Time |
+| [2,1] | Yaw vs Time |
+
+RPY 采用 **PX4 FRD 坐标系**：
+- Roll（绕 X/forward）：右侧下沉为正
+- Pitch（绕 Y/right）：低头（nose down）为正
+- Yaw（绕 Z/down）：向右转为正（从上方看顺时针）
+
+---
 
 | 子图 | 内容 | 坐标轴缩放 |
 |------|------|-----------|
