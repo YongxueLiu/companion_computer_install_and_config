@@ -29,7 +29,7 @@
 
 ## 配置文件位置
 
-### 纯 VO 模式（848×480）
+### 纯 VO 模式（640×480）
 
 ```
 ~/ros2_ws/src/VINS-Fusion-ROS2/config/realsense_d435i/
@@ -88,7 +88,7 @@ ros2 launch realsense2_camera rs_launch.py \
   enable_sync:=true \
   enable_infra1:=true \
   enable_infra2:=true \
-  depth_module.infra_profile:=848x480x30
+  depth_module.infra_profile:=640x480x30
 ```
 
 > ⚠️ **USB 3.2 必需**：D435i 必须插在 USB 3.0/3.2（蓝色）接口上。若日志出现 `Device USB type: 2.1`，请更换端口。
@@ -127,7 +127,7 @@ ros2 launch realsense2_camera rs_launch.py \
   enable_sync:=true \
   enable_infra1:=true \
   enable_infra2:=true \
-  depth_module.infra_profile:=848x480x30
+  depth_module.infra_profile:=640x480x30
 ```
 
 > `enable_sync:=true` 开启硬件帧同步，确保左右目时间戳严格一致。
@@ -185,9 +185,9 @@ D435i 的 **IMU 坐标系** 和 **相机坐标系** 方向不同：
 | Y | **下** (down) | **左** (left) |
 | Z | **前** (forward) | **上** (up) |
 
-因此从相机到 IMU 需要一个 **旋转矩阵** 做坐标变换。配置文件中 `body_T_cam0` 和 `body_T_cam1` 的旋转部分已使用 RealSense 默认标定值，平移部分包含了 IMU 到左右目的实际偏移。`estimate_extrinsic: 1` 会在 VIO 初始化时在线精修这些外参。
+> **为什么 `body_T_cam0` 的旋转是单位矩阵？** 理论上 IMU 和相机坐标轴方向不同，需要旋转矩阵。但 **librealsense SDK 内部已自动将 IMU 数据转换到相机坐标系**（见官方文档），因此 ROS 发布的 `/camera/camera/imu` 和相机共享同一坐标系。配置文件中 `body_T_cam0` 和 `body_T_cam1` 的旋转部分使用单位矩阵 `I`，平移部分包含了 IMU 到左右目的实际偏移。`estimate_extrinsic: 1` 会在 VIO 初始化时在线精修这些外参。
 
-> ⚠️ **不要**把 `body_T_cam0` 简化为单位矩阵 `I`，否则 IMU 数据会被错误地投影到相机坐标系，导致 VIO 初始化失败或发散。
+> ⚠️ 如果把 `body_T_cam0` 改成非单位矩阵（如 Euroc 默认的 90° 旋转），IMU 数据会被错误地二次投影，导致 VIO 初始化失败或发散。
 
 ### 2. 启动 RealSense D435i（640×480 + IMU）
 
@@ -503,7 +503,7 @@ python3 plot_odom_compare.py ~/odom_compare_result.csv
 | **Loop Fusion** | 可选 | 可选 | 可选 |
 | **RViz** | 可选 | 可选 | 可选 |
 
-\* 基础相机参数：`enable_sync:=true enable_infra1:=true enable_infra2:=true depth_module.infra_profile:=848x480x30`  
+\* 基础相机参数：`enable_sync:=true enable_infra1:=true enable_infra2:=true depth_module.infra_profile:=640x480x30`  
 \* IMU 参数（VIO 模式额外加）：`enable_gyro:=true enable_accel:=true unite_imu_method:=2`
 
 ---
