@@ -17,6 +17,120 @@ Reference frames:
     FRD: Forward-Right-Down (PX4 body)
     ENU: East-North-Up      (VINS VIO world frame)
     NED: North-East-Down    (PX4 world)
+
+`bridge_node.py` 中的姿态转换公式为：
+
+```python
+q_frd_to_ned = q_enu_to_ned ⊗ q_body_to_enu ⊗ q_frd_to_opencv
+```
+
+其中：
+
+```python
+q_enu_to_ned    = [0.0,  √2/2,  √2/2,  0.0]   # [w, x, y, z]
+q_frd_to_opencv = [-0.5,  0.5,   0.5,   0.5]   # [w, x, y, z]
+```
+
+对应的旋转矩阵形式为：
+
+$$
+R_{frd}^{ned} = R_{enu}^{ned} \cdot R_{body}^{enu} \cdot R_{frd}^{opencv}
+$$
+
+---
+
+## 1. 固定矩阵（已知常数）
+
+### (1) ENU → NED
+
+$$
+R_{enu}^{ned} =
+\begin{bmatrix}
+0 & 1 & 0 \\
+1 & 0 & 0 \\
+0 & 0 & -1
+\end{bmatrix}
+$$
+
+含义：
+- ENU X (East)  → NED Y (East)
+- ENU Y (North) → NED X (North)
+- ENU Z (Up)    → NED Z (Down)
+
+### (2) FRD → OPENCV body
+
+$$
+R_{frd}^{opencv} =
+\begin{bmatrix}
+0 & 1 & 0 \\
+0 & 0 & 1 \\
+1 & 0 & 0
+\end{bmatrix}
+$$
+
+含义：
+- FRD X (Forward) → OPENCV Z (Forward)
+- FRD Y (Right)   → OPENCV X (Right)
+- FRD Z (Down)    → OPENCV Y (Down)
+
+---
+
+## 2. 时变矩阵（来自 VINS 输出）
+
+设 VINS 输出的 `q_body_to_enu` 对应的旋转矩阵为：
+
+$$
+R_{body}^{enu} =
+\begin{bmatrix}
+r_{00} & r_{01} & r_{02} \\
+r_{10} & r_{11} & r_{12} \\
+r_{20} & r_{21} & r_{22}
+\end{bmatrix}
+$$
+
+---
+
+## 3. 完整展开式
+
+将三个矩阵相乘并展开，得到 FRD → NED 的旋转矩阵：
+
+$$
+R_{frd}^{ned} =
+\begin{bmatrix}
+r_{12} & r_{10} & r_{11} \\
+r_{02} & r_{00} & r_{01} \\
+-r_{22} & -r_{20} & -r_{21}
+\end{bmatrix}
+$$
+
+---
+
+## 4. 验证
+
+当相机水平朝北时，VINS 的 `R_body_to_enu` 为：
+
+$$
+R_{body}^{enu} =
+\begin{bmatrix}
+1 & 0 & 0 \\
+0 & 0 & 1 \\
+0 & -1 & 0
+\end{bmatrix}
+$$
+
+代入展开式：
+
+$$
+R_{frd}^{ned} =
+\begin{bmatrix}
+1 & 0 & 0 \\
+0 & 1 & 0 \\
+0 & 0 & 1
+\end{bmatrix}
+= I
+$$
+
+即 FRD 与 NED 完全重合（Forward=North, Right=East, Down=Down），与 live odometry 验证结果一致。
 """
 
 import math
