@@ -1,0 +1,44 @@
+/**:
+  ros__parameters:
+    # ------------------------------------------------------------------
+    # Operation mode
+    # 'vio' -> Visual-Inertial Odometry (default, smaller variances)
+    # 'vo'  -> Visual Odometry only (larger default variances)
+    # ------------------------------------------------------------------
+    mode: 'vio'
+
+    # ------------------------------------------------------------------
+    # VINS output topic
+    # ------------------------------------------------------------------
+    odometry_topic: '/vins_estimator/odometry'
+
+    # ------------------------------------------------------------------
+    # Body coordinate frame of VINS/RealSense D435i
+    # 'OPENCV' -> X-right, Y-down, Z-forward (VINS + RealSense D435i)
+    # 'FLU'    -> Forward-Left-Up
+    # 'FRD'    -> Forward-Right-Down (already matches PX4 body)
+    # ------------------------------------------------------------------
+    body_frame: 'OPENCV'
+
+    # ------------------------------------------------------------------
+    # Yaw alignment mode
+    # 'none'    -> No yaw correction. Output uses virtual NED.
+    # 'px4_mag' -> Subscribe to /fmu/out/vehicle_attitude and align
+    #              VINS yaw to PX4 magnetometer yaw.
+    # 'manual'  -> Use manual_yaw_offset_rad as fixed delta_yaw.
+    # ------------------------------------------------------------------
+    yaw_alignment_mode: 'none'
+
+    # Manual yaw offset (radians). Only used when yaw_alignment_mode='manual'.
+    manual_yaw_offset_rad: 0.0
+
+    # ------------------------------------------------------------------
+    # Safety / robustness
+    # ------------------------------------------------------------------
+    position_jump_threshold: 0.5
+    publish_rate: 20.0
+
+    # Default variances (overridden in 'vo' mode if left at defaults)
+    default_position_variance: [0.01, 0.01, 0.01]
+    default_orientation_variance: [0.01, 0.01, 0.01]
+    default_velocity_variance: [0.01, 0.01, 0.01]
