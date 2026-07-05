@@ -1,0 +1,94 @@
+/**:
+  ros__parameters:
+    common:
+      img_topic: "/camera/camera/infra1/image_rect_raw"
+      lid_topic: "/livox/lidar"
+      imu_topic: "/livox/imu"
+      img_en: 1
+      lidar_en: 1
+      ros_driver_bug_fix: false
+      enable_image_processing: false
+
+    extrin_calib:
+      # IMU -> LiDAR extrinsic (from FAST-LIO mid360.yaml)
+      extrinsic_T: [-0.011, -0.02329, 0.04412]
+      extrinsic_R: [1., 0., 0.,
+                    0., 1., 0.,
+                    0., 0., 1.]
+      # LiDAR -> Camera extrinsic: calibrated R (run_1782119262 init) + measured P
+      Rcl: [-0.005228, -0.998807,  0.048561,
+             0.018604, -0.048650, -0.998643,
+             0.999813, -0.004318,  0.018836]
+      Pcl: [0.029013, -0.150000, -0.095000]
+
+    time_offset:
+      # Livox driver patched to always use hardware timestamps (see
+      # ws_livox/src/livox_ros_driver2/src/comm/pub_handler.cpp).
+      # With hardware timestamps LiDAR and IMU are already synced.
+      imu_time_offset: 0.0
+      img_time_offset: 0.0
+      exposure_time_init: 0.0
+
+    preprocess:
+      point_filter_num: 3
+      filter_size_surf: 0.05
+      lidar_type: 7 # Livox Mid-360 LiDAR
+      scan_line: 4
+      blind: 0.5
+
+    vio:
+      max_iterations: 5
+      outlier_threshold: 1000
+      img_point_cov: 100
+      patch_size: 8
+      patch_pyrimid_level: 4
+      normal_en: true
+      raycast_en: false
+      inverse_composition_en: false
+      exposure_estimate_en: true
+      inv_expo_cov: 0.1
+
+    imu:
+      imu_en: true
+      imu_int_frame: 30
+      acc_cov: 0.8
+      gyr_cov: 0.5
+      b_acc_cov: 0.001
+      b_gyr_cov: 0.001
+
+    lio:
+      max_iterations: 3
+      dept_err: 0.02
+      beam_err: 0.15
+      min_eigen_value: 0.005
+      voxel_size: 0.3
+      max_layer: 2
+      max_points_num: 50
+      layer_init_num: [5, 5, 5, 5, 5]
+
+    local_map:
+      map_sliding_en: false
+      half_map_size: 100
+      sliding_thresh: 8.0
+
+    uav:
+      imu_rate_odom: false
+      gravity_align_en: true
+
+    publish:
+      dense_map_en: true
+      pub_effect_point_en: false
+      pub_plane_en: false
+      pub_scan_num: 1
+      blind_rgb_points: 0.0
+
+    evo:
+      seq_name: "mid360_d435i_lab"
+      pose_output_en: false
+
+    pcd_save:
+      pcd_save_en: false
+      colmap_output_en: false
+      filter_size_pcd: 0.15
+      interval: -1
+      # -1 : all frames will be saved in ONE pcd file, may lead to memory crash.
